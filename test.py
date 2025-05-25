@@ -6,7 +6,7 @@ import numpy as np
 
 gmmg = GMMsTraceGenerator('caltech', 'Summer 2021')
 env = gym.make('sustaingym/EVCharging-v0', data_generator=gmmg, project_action_in_env=False)
-env = FlattenObservation(env)
+#env = FlattenObservation(env)
 
 print(env.observation_space)
 print(env.action_space)

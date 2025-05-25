@@ -92,31 +92,12 @@ DDPG:
   gradient_steps: 1
   action_noise: null
 
-# CrossQ algorithm parameters
-CrossQ:
-  learning_rate: 3e-4
-  buffer_size: 1000000
-  learning_starts: 100
-  batch_size: 256
-  tau: 0.005
-  gamma: 0.99
-  train_freq: 1
-  gradient_steps: 1
-  ent_coef: 0.1
-  sigma: 0.5
-
 # ARS algorithm parameters
 ARS:
   n_delta: 8
-  step_size: 0.02
   delta_std: 0.05
-  rollout_steps: 1000
   n_top: 4
-  learning_rate: 0.01
-  delta_max: null
-  zero_policy: false
-  eval_episodes: 1
-  scale_reward: true
+  learning_rate: 0.02
 
 # TQC algorithm parameters
 TQC:
@@ -131,7 +112,5 @@ TQC:
   action_noise: null
   policy_kwargs: null
   top_quantiles_to_drop_per_net: 2
-  n_critics: 5
-  n_quantiles: 25
   ent_coef: "auto"
   target_entropy: "auto" 
