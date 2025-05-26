@@ -325,3 +325,97 @@ class Agent(object):
 		self.eps_since_update = 0
 		self.timesteps_since_update = 0
 		self.min_return = 1e8
+
+	def save(self, filename):
+		"""
+		Save the model weights and training state
+		"""
+		torch.save({
+			'actor_state_dict': self.actor.state_dict(),
+			'critic_state_dict': self.critic.state_dict(),
+			'encoder_state_dict': self.encoder.state_dict(),
+			'fixed_encoder_state_dict': self.fixed_encoder.state_dict(),
+			'checkpoint_actor_state_dict': self.checkpoint_actor.state_dict(),
+			'checkpoint_encoder_state_dict': self.checkpoint_encoder.state_dict(),
+			'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
+			'critic_optimizer_state_dict': self.critic_optimizer.state_dict(),
+			'encoder_optimizer_state_dict': self.encoder_optimizer.state_dict(),
+			'training_steps': self.training_steps,
+			'eps_since_update': self.eps_since_update,
+			'timesteps_since_update': self.timesteps_since_update,
+			'max_eps_before_update': self.max_eps_before_update,
+			'min_return': self.min_return,
+			'best_min_return': self.best_min_return,
+			'max': self.max,
+			'min': self.min,
+			'max_target': self.max_target,
+			'min_target': self.min_target,
+			'hyperparameters': self.hp
+		}, filename)
+		print(f"Model saved to {filename}")
+
+	def load(self, filename):
+		"""
+		Load the model weights and training state
+		"""
+		checkpoint = torch.load(filename, map_location=self.device)
+		
+		self.actor.load_state_dict(checkpoint['actor_state_dict'])
+		self.critic.load_state_dict(checkpoint['critic_state_dict'])
+		self.encoder.load_state_dict(checkpoint['encoder_state_dict'])
+		self.fixed_encoder.load_state_dict(checkpoint['fixed_encoder_state_dict'])
+		self.checkpoint_actor.load_state_dict(checkpoint['checkpoint_actor_state_dict'])
+		self.checkpoint_encoder.load_state_dict(checkpoint['checkpoint_encoder_state_dict'])
+		
+		self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
+		self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer_state_dict'])
+		self.encoder_optimizer.load_state_dict(checkpoint['encoder_optimizer_state_dict'])
+		
+		# Update target networks
+		self.actor_target.load_state_dict(self.actor.state_dict())
+		self.critic_target.load_state_dict(self.critic.state_dict())
+		self.fixed_encoder_target.load_state_dict(self.fixed_encoder.state_dict())
+		
+		# Load training state
+		self.training_steps = checkpoint['training_steps']
+		self.eps_since_update = checkpoint['eps_since_update']
+		self.timesteps_since_update = checkpoint['timesteps_since_update']
+		self.max_eps_before_update = checkpoint['max_eps_before_update']
+		self.min_return = checkpoint['min_return']
+		self.best_min_return = checkpoint['best_min_return']
+		self.max = checkpoint['max']
+		self.min = checkpoint['min']
+		self.max_target = checkpoint['max_target']
+		self.min_target = checkpoint['min_target']
+		
+		print(f"Model loaded from {filename}")
+		print(f"Training steps: {self.training_steps}")
+
+	def save_policy_only(self, filename):
+		"""
+		Save only the policy networks (for evaluation)
+		"""
+		torch.save({
+			'actor_state_dict': self.actor.state_dict(),
+			'encoder_state_dict': self.encoder.state_dict(),
+			'checkpoint_actor_state_dict': self.checkpoint_actor.state_dict(),
+			'checkpoint_encoder_state_dict': self.checkpoint_encoder.state_dict(),
+			'hyperparameters': self.hp
+		}, filename)
+		print(f"Policy saved to {filename}")
+
+	def load_policy_only(self, filename):
+		"""
+		Load only the policy networks (for evaluation)
+		"""
+		checkpoint = torch.load(filename, map_location=self.device)
+		
+		self.actor.load_state_dict(checkpoint['actor_state_dict'])
+		self.encoder.load_state_dict(checkpoint['encoder_state_dict'])
+		self.checkpoint_actor.load_state_dict(checkpoint['checkpoint_actor_state_dict'])
+		self.checkpoint_encoder.load_state_dict(checkpoint['checkpoint_encoder_state_dict'])
+		
+		# Update fixed encoder for consistency
+		self.fixed_encoder.load_state_dict(self.encoder.state_dict())
+		
+		print(f"Policy loaded from {filename}")

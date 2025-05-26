@@ -42,8 +42,17 @@ def train_online(RL_agent, env, eval_env, cfg):
     ep_finished = False
     ep_total_reward, ep_timesteps, ep_num = 0, 0, 1
 
+    # Create models directory
+    models_dir = f"{cfg.log_dir}/models"
+    os.makedirs(models_dir, exist_ok=True)
+
     for t in range(int(cfg.timesteps+1)):
         maybe_evaluate_and_print(RL_agent, eval_env, evals, t, start_time, cfg)
+        
+        # Save model periodically
+        if t > 0 and t % cfg.checkpoint_freq == 0:
+            model_path = f"{models_dir}/td7_checkpoint_{t}.pth"
+            RL_agent.save(model_path)
         
         if allow_train:
             action = RL_agent.select_action(np.array(state))
@@ -79,6 +88,16 @@ def train_online(RL_agent, env, eval_env, cfg):
             ep_total_reward, ep_timesteps = 0, 0
             ep_num += 1 
 
+    # Save final model
+    final_model_path = f"{models_dir}/td7_final.pth"
+    RL_agent.save(final_model_path)
+    
+    # Save policy only (smaller file for evaluation)
+    policy_path = f"{models_dir}/td7_policy.pth"
+    RL_agent.save_policy_only(policy_path)
+    
+    print(f"Training completed! Final model saved to {final_model_path}")
+    print(f"Policy saved to {policy_path}")
 
 
 def maybe_evaluate_and_print(RL_agent, eval_env, evals, t, start_time, cfg):
@@ -102,15 +121,72 @@ def maybe_evaluate_and_print(RL_agent, eval_env, evals, t, start_time, cfg):
         print("---------------------------------------")
 
         evals.append(total_reward)
-        np.save(f"./results/{cfg.file_name}", evals)
+        
+        # Create results directory if it doesn't exist
+        results_dir = f"{cfg.log_dir}/results"
+        os.makedirs(results_dir, exist_ok=True)
+        np.save(f"{results_dir}/TD7_EVCharging_{cfg.seed}", evals)
+
+
+def evaluate_policy(RL_agent, eval_env, n_episodes=100, use_checkpoints=True):
+    """
+    Evaluate a trained policy
+    """
+    print(f"Evaluating policy for {n_episodes} episodes...")
+    
+    total_rewards = []
+    episode_lengths = []
+    
+    for ep in range(n_episodes):
+        state, _ = eval_env.reset()
+        done = False
+        episode_reward = 0
+        episode_length = 0
+        
+        while not done:
+            action = RL_agent.select_action(state, use_checkpoints, use_exploration=False)
+            state, reward, terminated, truncated, _ = eval_env.step(action)
+            done = terminated or truncated
+            episode_reward += reward
+            episode_length += 1
+        
+        total_rewards.append(episode_reward)
+        episode_lengths.append(episode_length)
+        
+        if (ep + 1) % 10 == 0:
+            print(f"Episode {ep + 1}/{n_episodes}: Reward = {episode_reward:.3f}")
+    
+    mean_reward = np.mean(total_rewards)
+    std_reward = np.std(total_rewards)
+    mean_length = np.mean(episode_lengths)
+    
+    print("---------------------------------------")
+    print(f"Evaluation Results:")
+    print(f"Mean Reward: {mean_reward:.3f} ± {std_reward:.3f}")
+    print(f"Mean Episode Length: {mean_length:.1f}")
+    print(f"Min Reward: {np.min(total_rewards):.3f}")
+    print(f"Max Reward: {np.max(total_rewards):.3f}")
+    print("---------------------------------------")
+    
+    return {
+        'mean_reward': mean_reward,
+        'std_reward': std_reward,
+        'mean_length': mean_length,
+        'all_rewards': total_rewards,
+        'all_lengths': episode_lengths
+    }
 
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg: DictConfig):
-    if cfg.file_name is None:
-        cfg.file_name = f"TD7_EVCharging_{cfg.seed}"
+    print(f"Configuration: \n{OmegaConf.to_yaml(cfg)}")
 
-    if not os.path.exists("./results"):
-        os.makedirs("./results")
+    # Prepare directories
+    log_dir = cfg.log_dir
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Create results directory
+    results_dir = f"{log_dir}/results"
+    os.makedirs(results_dir, exist_ok=True)
 
     env = make_env()()
     eval_env = make_eval_env()()
