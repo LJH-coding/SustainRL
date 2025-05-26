@@ -1,0 +1,8 @@
+/logs
+slurm-*
+/M2TD3
+/TD7
+*.sh
+__pycache__/
+*.log
+results/
